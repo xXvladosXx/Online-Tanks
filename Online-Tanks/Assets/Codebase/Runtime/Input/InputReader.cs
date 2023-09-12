@@ -9,8 +9,10 @@ namespace Codebase.Runtime.Input
     {
         private Controls _controls;
         
+        public Vector2 MouseAim { get; private set; }
+        
         public event Action<Vector2> OnMoved;
-        public event Action<bool> OnFired; 
+        public event Action<bool> OnFired;
 
         private void OnEnable()
         {
@@ -36,5 +38,8 @@ namespace Codebase.Runtime.Input
                 OnFired?.Invoke(false);
             }
         }
+
+        public void OnAim(InputAction.CallbackContext context) => 
+            MouseAim = context.ReadValue<Vector2>();
     }
 }

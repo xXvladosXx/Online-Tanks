@@ -1,9 +1,8 @@
-﻿using System;
-using Codebase.Runtime.Input;
+﻿using Codebase.Runtime.Input;
 using Unity.Netcode;
 using UnityEngine;
 
-namespace Codebase.Runtime.Player
+namespace Codebase.Runtime.Player.Movement
 {
     public class PlayerMovement : NetworkBehaviour, IMovement
     {

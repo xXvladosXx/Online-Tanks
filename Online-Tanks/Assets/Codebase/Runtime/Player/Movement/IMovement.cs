@@ -1,4 +1,4 @@
-﻿namespace Codebase.Runtime.Player
+﻿namespace Codebase.Runtime.Player.Movement
 {
     public interface IMovement
     {

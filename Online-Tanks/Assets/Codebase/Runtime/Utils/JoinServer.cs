@@ -1,9 +1,7 @@
-using System;
-using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
 
-namespace Codebase
+namespace Codebase.Runtime.Utils
 {
     public class JoinServer : MonoBehaviour
     {

@@ -55,8 +55,7 @@ PrefabInstance:
       propertyPath: m_Name
       value: ServerProjectile
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 3356591408278795501, guid: ab8b84b1be64c15428f0b3b48868b96e, type: 3}
+    m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: ab8b84b1be64c15428f0b3b48868b96e, type: 3}
 --- !u!1 &8820494124287935704 stripped
 GameObject:

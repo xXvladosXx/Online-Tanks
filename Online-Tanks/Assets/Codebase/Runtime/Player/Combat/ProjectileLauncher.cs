@@ -1,5 +1,6 @@
 ﻿using System;
 using Codebase.Runtime.Input;
+using Codebase.Runtime.Player.Resource;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -13,15 +14,17 @@ namespace Codebase.Runtime.Player.Combat
         [SerializeField] private Collider2D _playerCollider;
         [SerializeField] private Transform _projectileSpawnPoint;
         [SerializeField] private InputReader _inputReader;
+        [SerializeField] private CoinCollector _coinCollector;
         
         [Header("Settings")]
         [SerializeField] private float _projectileSpeed = 10f;
         [SerializeField] private float _fireRate = 0.5f;
         [SerializeField] private float _muzzleFlashDuration = 0.1f;
-
+        [SerializeField] private int _costToFire;
+        
         private bool _shouldFire;
-        private float _previousFireTime;
         private float _muzzleFlashTimer;
+        private float _timer;
 
         public override void OnNetworkSpawn()
         {
@@ -53,22 +56,30 @@ namespace Codebase.Runtime.Player.Combat
             
             if(!IsOwner)
                 return;
+
+            if(_timer > 0)
+                _timer -= Time.deltaTime;
             
             if(!_shouldFire)
                 return;
             
-            if(Time.time < 1 / _fireRate + _previousFireTime)
+            if(_timer > 0)
                 return;
 
+            if(_coinCollector.Coins.Value < _costToFire)
+                return;
+            
             PrimaryFireServerRpc(_projectileSpawnPoint.position, _projectileSpawnPoint.up );
             SpawnProjectile(_projectileSpawnPoint.position, _projectileSpawnPoint.up);
             
-            _previousFireTime = Time.time;
+            _timer = 1 / _fireRate;
         }
 
         [ServerRpc]
         private void PrimaryFireServerRpc(Vector3 position, Vector3 direction)
         {
+            _coinCollector.Spend(_costToFire);
+
             var projectile = Instantiate(_serverProjectilePrefab, position, Quaternion.identity);
             projectile.transform.up = direction;
             Physics2D.IgnoreCollision(_playerCollider, projectile.GetComponent<Collider2D>());

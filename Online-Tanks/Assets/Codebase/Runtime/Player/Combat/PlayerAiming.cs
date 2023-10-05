@@ -9,15 +9,6 @@ namespace Codebase.Runtime.Player.Combat
     {
         [SerializeField] private Transform _aimingTransform;
         [SerializeField] private InputReader _inputReader;
-        private Camera _camera;
-
-        public override void OnNetworkSpawn()
-        {
-            if (!IsOwner)
-                return;
-            
-            _camera = Camera.main;
-        }
 
         private void LateUpdate()
         {
@@ -25,7 +16,7 @@ namespace Codebase.Runtime.Player.Combat
                 return;
 
             var mousePosition = _inputReader.MouseAim;
-            var mouseWorldPosition = _camera.ScreenToWorldPoint(mousePosition);
+            var mouseWorldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
             Vector2 direction = (mouseWorldPosition - transform.position).normalized;
             _aimingTransform.up = direction;
         }

@@ -25,16 +25,16 @@ namespace Codebase.Runtime.Networking.Host
             }
         }
         
-        private HostGameManager _gameManager;
-        
-        private void Start()
+        public HostGameManager GameManager { get; private set; }
+
+        public void MakePersistent()
         {
             DontDestroyOnLoad(gameObject);
         }
 
         public void CreateHost()
         {
-            _gameManager = new HostGameManager();
+            GameManager = new HostGameManager();
         }
     }
 }

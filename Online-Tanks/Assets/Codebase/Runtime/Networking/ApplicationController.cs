@@ -22,15 +22,15 @@ namespace Codebase.Runtime.Networking
         {
             if (isServer)
             {
-                
             }
             else
             {
+                var hostSingleton = Instantiate(_hostPrefab);
+                hostSingleton.MakePersistent();
+                hostSingleton.CreateHost();
+                
                 var clientSingleton = Instantiate(_clientPrefab);
                 bool auth = await clientSingleton.CreateClient();
-                
-                var hostSingleton = Instantiate(_hostPrefab);
-                hostSingleton.CreateHost();
 
                 if (auth)
                 {

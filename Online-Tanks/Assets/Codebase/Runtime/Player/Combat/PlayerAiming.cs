@@ -16,7 +16,7 @@ namespace Codebase.Runtime.Player.Combat
                 return;
 
             var mousePosition = _inputReader.MouseAim;
-            var mouseWorldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
+            var mouseWorldPosition = UnityEngine.Camera.main.ScreenToWorldPoint(mousePosition);
             Vector2 direction = (mouseWorldPosition - transform.position).normalized;
             _aimingTransform.up = direction;
         }

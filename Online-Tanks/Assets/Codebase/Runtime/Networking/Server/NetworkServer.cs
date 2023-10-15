@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Text;
 using Codebase.Runtime.Networking.Shared;
+using Codebase.Runtime.Player.Spawn;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -33,6 +34,19 @@ namespace Codebase.Runtime.Networking.Server
             if(_networkManager.IsListening)
                 _networkManager.Shutdown();
         }
+        
+        public UserData GetUserDataByClientId(ulong clientId)
+        {
+            if (_connectedClients.TryGetValue(clientId, out var userId))
+            {
+                if (_connectedUsers.TryGetValue(userId, out var userData))
+                {
+                    return userData;
+                }
+            }
+
+            return null;
+        }
 
         private void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request,
             NetworkManager.ConnectionApprovalResponse response)
@@ -44,6 +58,8 @@ namespace Codebase.Runtime.Networking.Server
             _connectedUsers[userData.UserId] = userData;
             
             response.Approved = true;
+            response.Position = SpawnPoint.GetRandomSpawnPoint();
+            response.Rotation = Quaternion.identity;
             response.CreatePlayerObject = true;
         }
 

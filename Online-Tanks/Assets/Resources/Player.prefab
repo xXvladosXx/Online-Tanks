@@ -261,6 +261,7 @@ GameObject:
   - component: {fileID: 2152112187453201829}
   - component: {fileID: 5243228844554366623}
   - component: {fileID: 3960564784217151759}
+  - component: {fileID: 5492747895879706863}
   m_Layer: 0
   m_Name: OverHeadCanvas
   m_TagString: Untagged
@@ -325,6 +326,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _health: {fileID: 1504224988348690641}
   _healthBar: {fileID: 5633556509344785354}
+--- !u!114 &5492747895879706863
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1702855992289063372}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5fb510a4638f42e29fd1aaab2ecac5e3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _player: {fileID: 282663482044263865}
+  _nameText: {fileID: 3532759790025704332}
 --- !u!1 &2238801790494634448
 GameObject:
   m_ObjectHideFlags: 0
@@ -874,7 +889,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: b
+  m_text: wdwdwd
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -917,7 +932,7 @@ MonoBehaviour:
   m_lineSpacingMax: 0
   m_paragraphSpacing: 0
   m_charWidthMaxAdj: 0
-  m_enableWordWrapping: 1
+  m_enableWordWrapping: 0
   m_wordWrappingRatios: 0.4
   m_overflowMode: 0
   m_linkedTextComponent: {fileID: 0}
@@ -961,6 +976,7 @@ GameObject:
   - component: {fileID: 1504224988348690641}
   - component: {fileID: 287930735572252713}
   - component: {fileID: 282663482044263865}
+  - component: {fileID: 5934021987885748448}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1153,5 +1169,54 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f7d55b0786524f289f04ab0b72d31a6b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  <Health>k__BackingField: {fileID: 1504224988348690641}
+  <CoinCollector>k__BackingField: {fileID: 287930735572252713}
   _tankCamera: {fileID: 9131457486887360496}
   _priority: 15
+  PlayerName:
+    m_InternalValue:
+      utf8LengthInBytes: 0
+      bytes:
+        offset0000:
+          byte0000: 0
+          byte0001: 0
+          byte0002: 0
+          byte0003: 0
+          byte0004: 0
+          byte0005: 0
+          byte0006: 0
+          byte0007: 0
+          byte0008: 0
+          byte0009: 0
+          byte0010: 0
+          byte0011: 0
+          byte0012: 0
+          byte0013: 0
+          byte0014: 0
+          byte0015: 0
+        byte0016: 0
+        byte0017: 0
+        byte0018: 0
+        byte0019: 0
+        byte0020: 0
+        byte0021: 0
+        byte0022: 0
+        byte0023: 0
+        byte0024: 0
+        byte0025: 0
+        byte0026: 0
+        byte0027: 0
+        byte0028: 0
+        byte0029: 0
+--- !u!114 &5934021987885748448
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8917373555232874229}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 80d7c879794dfda4687da0e400131852, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

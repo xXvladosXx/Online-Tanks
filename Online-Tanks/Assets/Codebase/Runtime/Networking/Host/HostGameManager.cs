@@ -21,7 +21,7 @@ namespace Codebase.Runtime.Networking.Host
     public class HostGameManager : IDisposable
     {
         private Allocation _allocation;
-        private NetworkServer _networkServer;
+        public NetworkServer NetworkServer { get; private set; }
         
         private string _joinCode;
         private string _lobbyId;
@@ -83,8 +83,8 @@ namespace Codebase.Runtime.Networking.Host
                 return;
             }
             
-            _networkServer = new NetworkServer(NetworkManager.Singleton);
-            _networkServer.Initialize();
+            NetworkServer = new NetworkServer(NetworkManager.Singleton);
+            NetworkServer.Initialize();
             
             var userData = new UserData
             {
@@ -119,7 +119,7 @@ namespace Codebase.Runtime.Networking.Host
                 _lobbyId = string.Empty;
             }
 
-            _networkServer?.Shutdown();
+            NetworkServer?.Shutdown();
         }
 
         private IEnumerator HeartbeatLobby(float waitTimeSeconds)

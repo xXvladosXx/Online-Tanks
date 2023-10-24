@@ -27,9 +27,12 @@ namespace Codebase.Runtime.Networking.Server
 
         public void Shutdown()
         {
+            if (_networkManager == null) 
+                return;
+
             _networkManager.ConnectionApprovalCallback -= ApprovalCheck;
             _networkManager.OnServerStarted -= OnServerStarted;
-            OnServerStopped();
+            _networkManager.OnClientDisconnectCallback -= OnClientDisconnect;
             
             if(_networkManager.IsListening)
                 _networkManager.Shutdown();
@@ -39,10 +42,7 @@ namespace Codebase.Runtime.Networking.Server
         {
             if (_connectedClients.TryGetValue(clientId, out var userId))
             {
-                if (_connectedUsers.TryGetValue(userId, out var userData))
-                {
-                    return userData;
-                }
+                return _connectedUsers.TryGetValue(userId, out var userData) ? userData : null;
             }
 
             return null;
@@ -64,7 +64,6 @@ namespace Codebase.Runtime.Networking.Server
         }
 
         private void OnServerStarted() => _networkManager.OnClientDisconnectCallback += OnClientDisconnect;
-        private void OnServerStopped() => _networkManager.OnClientDisconnectCallback -= OnClientDisconnect;
 
         private void OnClientDisconnect(ulong clientId)
         {

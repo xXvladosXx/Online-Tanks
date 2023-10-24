@@ -17,8 +17,7 @@ namespace Codebase.Runtime.Networking.Host
                     _instance = FindObjectOfType<HostSingleton>();
                     if (_instance == null)
                     {
-                        var go = new GameObject(nameof(HostSingleton));
-                        _instance = go.AddComponent<HostSingleton>();
+                        return null;
                     }
                 }
 
@@ -27,6 +26,11 @@ namespace Codebase.Runtime.Networking.Host
         }
         
         public HostGameManager GameManager { get; private set; }
+
+        private void OnDestroy()
+        {
+            GameManager?.Dispose();
+        }
 
         public void MakePersistent()
         {

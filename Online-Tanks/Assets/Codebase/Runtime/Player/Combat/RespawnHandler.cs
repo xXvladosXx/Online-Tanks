@@ -55,7 +55,7 @@ namespace Codebase.Runtime.Player.Combat
             yield return null;
             var player = Instantiate(_playerPrefab, SpawnPoint.GetRandomSpawnPoint(), Quaternion.identity);
             player.NetworkObject.SpawnAsPlayerObject(ownerClientId);
-            player.CoinCollector.Coins.Value += keptCoins;
+            player.CoinCollector.Coins.Value = keptCoins;
         }
     }
 }

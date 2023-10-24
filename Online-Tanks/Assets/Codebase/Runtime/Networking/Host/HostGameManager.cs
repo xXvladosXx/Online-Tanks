@@ -103,10 +103,11 @@ namespace Codebase.Runtime.Networking.Host
 
         public async void Dispose()
         {
-            HostSingleton.Instance.StopCoroutine(_heartbeat);
-
             if (!string.IsNullOrEmpty(_lobbyId))
             {
+                if(HostSingleton.Instance)
+                    HostSingleton.Instance.StopCoroutine(_heartbeat);
+                
                 try
                 {
                     await Lobbies.Instance.DeleteLobbyAsync(_lobbyId);
@@ -117,9 +118,8 @@ namespace Codebase.Runtime.Networking.Host
                 }
 
                 _lobbyId = string.Empty;
+                NetworkServer?.Shutdown();
             }
-
-            NetworkServer?.Shutdown();
         }
 
         private IEnumerator HeartbeatLobby(float waitTimeSeconds)

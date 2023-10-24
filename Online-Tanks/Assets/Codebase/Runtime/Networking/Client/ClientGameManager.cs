@@ -37,7 +37,7 @@ namespace Codebase.Runtime.Networking.Client
 
         public void Dispose()
         {
-            _networkClient.Shutdown();
+            _networkClient?.Shutdown();
         }
 
         public void GoToMenu()

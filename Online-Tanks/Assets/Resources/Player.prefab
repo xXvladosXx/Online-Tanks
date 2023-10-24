@@ -1124,10 +1124,10 @@ MonoBehaviour:
   _projectileSpawnPoint: {fileID: 6477990790214968074}
   _inputReader: {fileID: 11400000, guid: 40ff4ae492dde374fa4677610397be28, type: 2}
   _coinCollector: {fileID: 287930735572252713}
-  _projectileSpeed: 10
+  _projectileSpeed: 15
   _fireRate: 0.5
   _muzzleFlashDuration: 0.1
-  _costToFire: 10
+  _costToFire: 0
 --- !u!114 &1504224988348690641
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1155,6 +1155,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4dc6c7b84e946d2a473e3c91d56c682, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _coinPrefab: {fileID: 8318772925332453297, guid: 136593712a47d9b48950e416ad72fe0c, type: 3}
+  _bountyCoinCount: 10
+  _minBountyCoinValue: 1
+  _spawnRadius: 3
+  _bountyPercentage: 0.5
+  _spawnLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  _health: {fileID: 1504224988348690641}
   Coins:
     m_InternalValue: 10
 --- !u!114 &282663482044263865

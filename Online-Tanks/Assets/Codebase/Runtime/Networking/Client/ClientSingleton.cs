@@ -17,8 +17,7 @@ namespace Codebase.Runtime.Networking.Client
                     _instance = FindObjectOfType<ClientSingleton>();
                     if (_instance == null)
                     {
-                        var go = new GameObject(nameof(ClientSingleton));
-                        _instance = go.AddComponent<ClientSingleton>();
+                        return null;
                     }
                 }
 
@@ -31,6 +30,11 @@ namespace Codebase.Runtime.Networking.Client
         private void Start()
         {
             DontDestroyOnLoad(gameObject);
+        }
+
+        private void OnDestroy()
+        {
+            GameManager?.Dispose();
         }
 
         public async Task<bool> CreateClient()

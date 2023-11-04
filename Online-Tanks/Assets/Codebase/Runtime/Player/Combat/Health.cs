@@ -21,12 +21,18 @@ namespace Codebase.Runtime.Player.Combat
             
             CurrentHealth.Value = MaxHealth;
         }
+
+        public void Heal(int value)
+        {
+            if(_isDead)
+                return;
+            
+            CurrentHealth.Value += value;
+            OnHealthChanged?.Invoke();
+        }
         
         public void TakeDamage(int damage)
         {
-            if(!IsServer)
-                return;
-            
             if(_isDead)
                 return;
             

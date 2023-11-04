@@ -12,6 +12,7 @@ namespace Codebase.Runtime.Player.Combat
     {
         [field: SerializeField] public Health Health { get; private set; }
         [field: SerializeField] public CoinCollector CoinCollector { get; private set; }
+        [SerializeField] private SpriteRenderer _miniMapIcon;
         [SerializeField] private CinemachineVirtualCamera _tankCamera;
         [SerializeField] private int _priority = 15;
         
@@ -32,6 +33,7 @@ namespace Codebase.Runtime.Player.Combat
             if (IsOwner)
             {
                 _tankCamera.Priority = _priority;
+                _miniMapIcon.color = Color.blue;
             }
         }
 

@@ -18,21 +18,29 @@ namespace Codebase.Runtime.Networking.Client
         }
 
         public void Initialize() => _networkManager.OnClientDisconnectCallback += OnClientDisconnect;
-        public void Shutdown() => _networkManager.OnClientDisconnectCallback -= OnClientDisconnect;
-
-        private void OnClientDisconnect(ulong clientId)
+        public void Shutdown()
         {
-            if(clientId != 0 && clientId != _networkManager.LocalClientId)
+            if(_networkManager == null)
                 return;
+            
+            _networkManager.OnClientDisconnectCallback -= OnClientDisconnect;
+        }
 
+        public void Disconnect()
+        {
             if (SceneManager.GetActiveScene().name != Constants.MAIN_MENU_SCENE_NAME)
-            {
                 SceneManager.LoadScene(Constants.MAIN_MENU_SCENE_NAME);
-            }
             
             if(_networkManager.IsConnectedClient)
                 _networkManager.Shutdown();
         }
         
+        private void OnClientDisconnect(ulong clientId)
+        {
+            if(clientId != 0 && clientId != _networkManager.LocalClientId)
+                return;
+
+            Disconnect();
+        }
     }
 }

@@ -75,5 +75,10 @@ namespace Codebase.Runtime.Networking.Client
             
             NetworkManager.Singleton.StartClient();
         }
+
+        public void Disconnect()
+        {
+            _networkClient.Disconnect();
+        }
     }
 }

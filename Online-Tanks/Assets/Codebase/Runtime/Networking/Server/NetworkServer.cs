@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using Codebase.Runtime.Networking.Shared;
 using Codebase.Runtime.Player.Spawn;
@@ -13,6 +14,8 @@ namespace Codebase.Runtime.Networking.Server
         private readonly Dictionary<string, UserData> _connectedUsers = new Dictionary<string, UserData>();
 
         private readonly NetworkManager _networkManager;
+
+        public event Action<string> OnClientLeft;
 
         public NetworkServer(NetworkManager networkManager)
         {
@@ -71,6 +74,7 @@ namespace Codebase.Runtime.Networking.Server
             {
                 _connectedUsers.Remove(userId);
                 _connectedClients.Remove(clientId);
+                OnClientLeft?.Invoke(userId);
             }
         }
     }

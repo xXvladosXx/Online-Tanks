@@ -9,14 +9,12 @@ namespace Codebase.Runtime.UI.Player
     {
         [SerializeField] private Health _health;
         [SerializeField] private Image _healthBar;
-        private bool _wasAssigned;
 
         public override void OnNetworkSpawn()
         {
-            if (!IsClient || _wasAssigned) 
+            if (!IsClient) 
                 return;
             
-            _wasAssigned = true;
             _health.OnHealthChanged += OnHealthChanged;
             OnHealthChanged();
         }

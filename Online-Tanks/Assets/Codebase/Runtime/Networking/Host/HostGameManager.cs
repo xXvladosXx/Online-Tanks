@@ -98,28 +98,25 @@ namespace Codebase.Runtime.Networking.Host
             NetworkManager.Singleton.NetworkConfig.ConnectionData = payloadBytes;
             
             NetworkManager.Singleton.StartHost();
+            NetworkServer.OnClientLeft += OnClientLeft;
             NetworkManager.Singleton.SceneManager.LoadScene(SCENE_NAME, LoadSceneMode.Single);
         }
 
-        public async void Dispose()
+        private async void OnClientLeft(string userId)
         {
-            if (!string.IsNullOrEmpty(_lobbyId))
+            try
             {
-                if(HostSingleton.Instance)
-                    HostSingleton.Instance.StopCoroutine(_heartbeat);
-                
-                try
-                {
-                    await Lobbies.Instance.DeleteLobbyAsync(_lobbyId);
-                }
-                catch (Exception exception)
-                {
-                    Debug.Log(exception);
-                }
-
-                _lobbyId = string.Empty;
-                NetworkServer?.Shutdown();
+                await LobbyService.Instance.RemovePlayerAsync(_lobbyId, userId);
             }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+        }
+
+        public void Dispose()
+        {
+            Shutdown();
         }
 
         private IEnumerator HeartbeatLobby(float waitTimeSeconds)
@@ -131,6 +128,29 @@ namespace Codebase.Runtime.Networking.Host
                 Lobbies.Instance.SendHeartbeatPingAsync(_lobbyId);
                 yield return delay;
             }
+        }
+
+        public async void Shutdown()
+        {
+            if(HostSingleton.Instance)
+                HostSingleton.Instance.StopCoroutine(_heartbeat);
+
+            if (!string.IsNullOrEmpty(_lobbyId))
+            {
+                try
+                {
+                    await Lobbies.Instance.DeleteLobbyAsync(_lobbyId);
+                }
+                catch (Exception exception)
+                {
+                    Debug.Log(exception);
+                }
+
+                _lobbyId = string.Empty;
+            }
+            
+            NetworkServer.OnClientLeft -= OnClientLeft;
+            NetworkServer?.Shutdown();
         }
     }
 }

@@ -15,8 +15,13 @@ namespace Codebase.Runtime.UI.Player
             if (!IsClient) 
                 return;
             
-            _health.OnHealthChanged += OnHealthChanged;
-            OnHealthChanged();
+            _health.CurrentHealth.OnValueChanged += OnHealthChanged;
+            OnHealthChanged(0, _health.CurrentHealth.Value);
+        }
+
+        private void OnHealthChanged(int oldHealth, int newHealth)
+        {
+            _healthBar.fillAmount = (float)newHealth / _health.MaxHealth;
         }
 
         public override void OnNetworkDespawn()
@@ -24,10 +29,7 @@ namespace Codebase.Runtime.UI.Player
             if (!IsClient) 
                 return;
             
-            _health.OnHealthChanged -= OnHealthChanged;
+            _health.CurrentHealth.OnValueChanged -= OnHealthChanged;
         }
-
-        private void OnHealthChanged() => 
-            _healthBar.fillAmount = (float) _health.CurrentHealth.Value / _health.MaxHealth;
     }
 }

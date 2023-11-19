@@ -4,6 +4,7 @@ using System.Text;
 using Codebase.Runtime.Networking.Shared;
 using Codebase.Runtime.Player.Spawn;
 using Unity.Netcode;
+using Unity.Netcode.Transports.UTP;
 using UnityEngine;
 
 namespace Codebase.Runtime.Networking.Server
@@ -39,6 +40,13 @@ namespace Codebase.Runtime.Networking.Server
             
             if(_networkManager.IsListening)
                 _networkManager.Shutdown();
+        }
+
+        public bool OpenConnection(string ip, int port)
+        {
+            var transport =_networkManager.gameObject.GetComponent<UnityTransport>();
+            transport.SetConnectionData(ip, (ushort)port);
+            return _networkManager.StartServer();
         }
         
         public UserData GetUserDataByClientId(ulong clientId)

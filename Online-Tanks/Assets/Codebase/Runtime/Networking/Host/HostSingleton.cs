@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Unity.Netcode;
 using UnityEngine;
 
 namespace Codebase.Runtime.Networking.Host
@@ -32,14 +33,14 @@ namespace Codebase.Runtime.Networking.Host
             GameManager?.Dispose();
         }
 
-        public void MakePersistent()
+        public void Start()
         {
             DontDestroyOnLoad(gameObject);
         }
 
-        public void CreateHost()
+        public void CreateHost(NetworkObject playerPrefab)
         {
-            GameManager = new HostGameManager();
+            GameManager = new HostGameManager(playerPrefab);
         }
     }
 }

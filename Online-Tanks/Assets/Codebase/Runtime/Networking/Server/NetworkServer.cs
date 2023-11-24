@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using Codebase.Runtime.Networking.Shared;
 using Codebase.Runtime.Player.Spawn;
 using Unity.Netcode;
@@ -9,27 +10,28 @@ using UnityEngine;
 
 namespace Codebase.Runtime.Networking.Server
 {
-    public class NetworkServer 
+    public class NetworkServer : IDisposable
     {
         private readonly Dictionary<ulong, string> _connectedClients = new Dictionary<ulong, string>();
         private readonly Dictionary<string, UserData> _connectedUsers = new Dictionary<string, UserData>();
 
         private readonly NetworkManager _networkManager;
+        private readonly NetworkObject _playerPrefab;
 
         public event Action<string> OnClientLeft;
+        public event Action<UserData> OnUserConnected;
+        public event Action<UserData> OnUserDisconnected; 
 
-        public NetworkServer(NetworkManager networkManager)
+        public NetworkServer(NetworkManager networkManager, NetworkObject networkObject)
         {
             _networkManager = networkManager;
-        }
+            _playerPrefab = networkObject;
 
-        public void Initialize()
-        {
             _networkManager.ConnectionApprovalCallback += ApprovalCheck;
             _networkManager.OnServerStarted += OnServerStarted;
         }
 
-        public void Shutdown()
+        public void Dispose()
         {
             if (_networkManager == null) 
                 return;
@@ -59,19 +61,31 @@ namespace Codebase.Runtime.Networking.Server
             return null;
         }
 
-        private void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request,
+        private void ApprovalCheck(
+            NetworkManager.ConnectionApprovalRequest request,
             NetworkManager.ConnectionApprovalResponse response)
         {
-            var payload = Encoding.UTF8.GetString(request.Payload);
-            var userData = JsonUtility.FromJson<UserData>(payload);
-            
-            _connectedClients[request.ClientNetworkId] = userData.UserId;
-            _connectedUsers[userData.UserId] = userData;
-            
+            string payload = System.Text.Encoding.UTF8.GetString(request.Payload);
+            UserData userData = JsonUtility.FromJson<UserData>(payload);
+
+            _connectedClients[request.ClientNetworkId] = userData.userAuthId;
+            _connectedUsers[userData.userAuthId] = userData;
+            OnUserConnected?.Invoke(userData);
+
+            _ = SpawnPlayerDelayed(request.ClientNetworkId);
+
             response.Approved = true;
-            response.Position = SpawnPoint.GetRandomSpawnPoint();
-            response.Rotation = Quaternion.identity;
-            response.CreatePlayerObject = true;
+            response.CreatePlayerObject = false;
+        }
+
+        private async Task SpawnPlayerDelayed(ulong clientId)
+        {
+            await Task.Delay(1000);
+
+            NetworkObject playerInstance =
+                GameObject.Instantiate(_playerPrefab, SpawnPoint.GetRandomSpawnPoint(), Quaternion.identity);
+
+            playerInstance.SpawnAsPlayerObject(clientId);
         }
 
         private void OnServerStarted() => _networkManager.OnClientDisconnectCallback += OnClientDisconnect;
@@ -80,6 +94,7 @@ namespace Codebase.Runtime.Networking.Server
         {
             if (_connectedClients.TryGetValue(clientId, out var userId))
             {
+                OnUserDisconnected?.Invoke(_connectedUsers[userId]);
                 _connectedUsers.Remove(userId);
                 _connectedClients.Remove(clientId);
                 OnClientLeft?.Invoke(userId);

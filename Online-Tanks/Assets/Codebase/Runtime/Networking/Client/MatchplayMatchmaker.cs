@@ -39,13 +39,13 @@ namespace Codebase.Runtime.Networking.Client
         {
             cancelToken = new CancellationTokenSource();
 
-            string queueName = data.ToMultiplayQueue();
+            string queueName = data.userGamePreferences.ToMultiplayQueue();
             CreateTicketOptions createTicketOptions = new CreateTicketOptions(queueName);
             Debug.Log(createTicketOptions.QueueName);
 
             List<Unity.Services.Matchmaker.Models.Player> players = new List<Unity.Services.Matchmaker.Models.Player>
             {
-                new Unity.Services.Matchmaker.Models.Player(data.UserId, data.GamePreferences)
+                new Unity.Services.Matchmaker.Models.Player(data.userAuthId, data.userGamePreferences)
             };
 
             try

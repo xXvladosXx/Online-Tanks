@@ -3,8 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using Codebase.Runtime.Networking.Host;
 using Codebase.Runtime.Networking.Server;
 using Codebase.Runtime.Networking.Shared;
+using Codebase.Runtime.UI;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using Unity.Networking.Transport.Relay;
@@ -16,141 +18,144 @@ using Unity.Services.Relay.Models;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace Codebase.Runtime.Networking.Host
+public class HostGameManager : IDisposable
 {
-    public class HostGameManager : IDisposable
+    private Allocation allocation;
+    private NetworkObject playerPrefab;
+
+    private string lobbyId;
+
+    public string JoinCode { get; private set; }
+    public NetworkServer NetworkServer { get; private set; }
+
+    private const int MaxConnections = 20;
+    private const string GameSceneName = "Gameplay";
+
+    public HostGameManager(NetworkObject playerPrefab)
     {
-        private Allocation _allocation;
-        public NetworkServer NetworkServer { get; private set; }
-        
-        private string _joinCode;
-        private string _lobbyId;
-        private Coroutine _heartbeat;
+        this.playerPrefab = playerPrefab;
+    }
 
-        private const int MAX_CONNECTIONS = 10;
-        private const string SCENE_NAME = "Gameplay";
-
-        public async Task StartHostAsync()
+    public async Task StartHostAsync(bool isPrivate)
+    {
+        try
         {
-            try
-            {
-               _allocation = await Relay.Instance.CreateAllocationAsync(MAX_CONNECTIONS);
-            }
-            catch (Exception exception)
-            {
-                Debug.LogError(exception.StackTrace);
-                Debug.LogError(exception);
-                return;
-            } 
-            
-            try
-            {
-                _joinCode = await Relay.Instance.GetJoinCodeAsync(_allocation.AllocationId);
-                Debug.Log(_joinCode);
-            }
-            catch (Exception exception)
-            {
-                Debug.LogError(exception.StackTrace);
-                Debug.LogError(exception);
-                return;
-            }
+            allocation = await Relay.Instance.CreateAllocationAsync(MaxConnections);
+        }
+        catch (Exception e)
+        {
+            Debug.Log(e);
+            return;
+        }
 
-            var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
-            var relayServerData = new RelayServerData(_allocation, "dtls");
-            transport.SetRelayServerData(relayServerData);
+        try
+        {
+            JoinCode = await Relay.Instance.GetJoinCodeAsync(allocation.AllocationId);
+            Debug.Log(JoinCode);
+        }
+        catch (Exception e)
+        {
+            Debug.Log(e);
+            return;
+        }
 
-            try
+        UnityTransport transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
+
+        RelayServerData relayServerData = new RelayServerData(allocation, "dtls");
+        transport.SetRelayServerData(relayServerData);
+
+        try
+        {
+            CreateLobbyOptions lobbyOptions = new CreateLobbyOptions();
+            lobbyOptions.IsPrivate = isPrivate;
+            lobbyOptions.Data = new Dictionary<string, DataObject>()
             {
-                var lobbyOptions = new CreateLobbyOptions
                 {
-                    IsPrivate = false,
-                    Data = new Dictionary<string, DataObject>
-                    {
-                        {"JoinCode", new DataObject(DataObject.VisibilityOptions.Member, _joinCode)}   
-                    }
-                };
-
-                var playerName = PlayerPrefs.GetString(Constants.PLAYER_NAME_PREF_KEY, "Player");
-                var lobby = await Lobbies.Instance.CreateLobbyAsync($"{playerName}'s Lobby", MAX_CONNECTIONS, lobbyOptions);
-                _lobbyId = lobby.Id;
-                _heartbeat = HostSingleton.Instance.StartCoroutine(HeartbeatLobby(15));
-            }
-            
-            catch (Exception exception)
-            {
-                Debug.LogError(exception.StackTrace);
-                Debug.LogError(exception);
-                return;
-            }
-            
-            NetworkServer = new NetworkServer(NetworkManager.Singleton);
-            NetworkServer.Initialize();
-            
-            var userData = new UserData
-            {
-                Username = PlayerPrefs.GetString(Constants.PLAYER_NAME_PREF_KEY, "Player"),
-                UserId = AuthenticationService.Instance.PlayerId
+                    "JoinCode", new DataObject(
+                        visibility: DataObject.VisibilityOptions.Member,
+                        value: JoinCode
+                    )
+                }
             };
+            string playerName = PlayerPrefs.GetString(Constants.PLAYER_NAME_PREF_KEY, "Unknown");
+            Lobby lobby = await Lobbies.Instance.CreateLobbyAsync(
+                $"{playerName}'s Lobby", MaxConnections, lobbyOptions);
 
-            var payload = JsonUtility.ToJson(userData);
-            var payloadBytes = Encoding.UTF8.GetBytes(payload);
-            
-            NetworkManager.Singleton.NetworkConfig.ConnectionData = payloadBytes;
-            
-            NetworkManager.Singleton.StartHost();
-            NetworkServer.OnClientLeft += OnClientLeft;
-            NetworkManager.Singleton.SceneManager.LoadScene(SCENE_NAME, LoadSceneMode.Single);
+            lobbyId = lobby.Id;
+
+            HostSingleton.Instance.StartCoroutine(HearbeatLobby(15));
+        }
+        catch (LobbyServiceException e)
+        {
+            Debug.Log(e);
+            return;
         }
 
-        private async void OnClientLeft(string userId)
+        NetworkServer = new NetworkServer(NetworkManager.Singleton, playerPrefab);
+
+        UserData userData = new UserData
         {
-            try
-            {
-                await LobbyService.Instance.RemovePlayerAsync(_lobbyId, userId);
-            }
-            catch (Exception e)
-            {
-                Debug.LogException(e);
-            }
+            userName = PlayerPrefs.GetString(Constants.PLAYER_NAME_PREF_KEY, "Missing Name"),
+            userAuthId = AuthenticationService.Instance.PlayerId
+        };
+        string payload = JsonUtility.ToJson(userData);
+        byte[] payloadBytes = Encoding.UTF8.GetBytes(payload);
+
+        NetworkManager.Singleton.NetworkConfig.ConnectionData = payloadBytes;
+
+        NetworkManager.Singleton.StartHost();
+
+        NetworkServer.OnClientLeft += HandleClientLeft;
+
+        NetworkManager.Singleton.SceneManager.LoadScene(GameSceneName, LoadSceneMode.Single);
+    }
+
+    private IEnumerator HearbeatLobby(float waitTimeSeconds)
+    {
+        WaitForSecondsRealtime delay = new WaitForSecondsRealtime(waitTimeSeconds);
+        while (true)
+        {
+            Lobbies.Instance.SendHeartbeatPingAsync(lobbyId);
+            yield return delay;
+        }
+    }
+
+    public void Dispose()
+    {
+        Shutdown();
+    }
+
+    public async void Shutdown()
+    {
+        if (string.IsNullOrEmpty(lobbyId)) { return; }
+
+        HostSingleton.Instance.StopCoroutine(nameof(HearbeatLobby));
+
+        try
+        {
+            await Lobbies.Instance.DeleteLobbyAsync(lobbyId);
+        }
+        catch (LobbyServiceException e)
+        {
+            Debug.Log(e);
         }
 
-        public void Dispose()
+        lobbyId = string.Empty;
+
+        NetworkServer.OnClientLeft -= HandleClientLeft;
+
+        NetworkServer?.Dispose();
+    }
+
+    private async void HandleClientLeft(string authId)
+    {
+        try
         {
-            Shutdown();
+            await LobbyService.Instance.RemovePlayerAsync(lobbyId, authId);
         }
-
-        private IEnumerator HeartbeatLobby(float waitTimeSeconds)
+        catch (LobbyServiceException e)
         {
-            var delay = new WaitForSecondsRealtime(waitTimeSeconds);
-            
-            while (true)
-            {
-                Lobbies.Instance.SendHeartbeatPingAsync(_lobbyId);
-                yield return delay;
-            }
-        }
-
-        public async void Shutdown()
-        {
-            if(HostSingleton.Instance)
-                HostSingleton.Instance.StopCoroutine(_heartbeat);
-
-            if (!string.IsNullOrEmpty(_lobbyId))
-            {
-                try
-                {
-                    await Lobbies.Instance.DeleteLobbyAsync(_lobbyId);
-                }
-                catch (Exception exception)
-                {
-                    Debug.Log(exception);
-                }
-
-                _lobbyId = string.Empty;
-            }
-            
-            NetworkServer.OnClientLeft -= OnClientLeft;
-            NetworkServer?.Shutdown();
+            Debug.Log(e);
         }
     }
 }

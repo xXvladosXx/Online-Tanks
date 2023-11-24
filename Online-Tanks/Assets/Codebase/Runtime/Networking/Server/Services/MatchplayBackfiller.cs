@@ -1,155 +1,134 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Codebase.Runtime.Networking.Shared;
 using Unity.Services.Matchmaker;
 using Unity.Services.Matchmaker.Models;
 using UnityEngine;
 
-namespace Codebase.Runtime.Networking.Server.Services
+public class MatchplayBackfiller : IDisposable
 {
-    public class MatchplayBackfiller : IDisposable
+    private CreateBackfillTicketOptions createBackfillOptions;
+    private BackfillTicket localBackfillTicket;
+    private bool localDataDirty;
+    private int maxPlayers;
+    private const int TicketCheckMs = 1000;
+
+    private int MatchPlayerCount => localBackfillTicket?.Properties.MatchProperties.Players.Count ?? 0;
+
+    private MatchProperties MatchProperties => localBackfillTicket.Properties.MatchProperties;
+    public bool IsBackfilling { get; private set; }
+
+    public MatchplayBackfiller(string connection, string queueName, MatchProperties matchmakerPayloadProperties, int maxPlayers)
     {
-        private CreateBackfillTicketOptions createBackfillOptions;
-        private BackfillTicket localBackfillTicket;
-        private bool localDataDirty;
-        private int maxPlayers;
-        private const int TicketCheckMs = 1000;
-
-        private int MatchPlayerCount => localBackfillTicket?.Properties.MatchProperties.Players.Count ?? 0;
-
-        private MatchProperties MatchProperties => localBackfillTicket.Properties.MatchProperties;
-        public bool IsBackfilling { get; private set; }
-
-        public MatchplayBackfiller(string connection, string queueName, MatchProperties matchmakerPayloadProperties, int maxPlayers)
+        this.maxPlayers = maxPlayers;
+        BackfillTicketProperties backfillProperties = new BackfillTicketProperties(matchmakerPayloadProperties);
+        localBackfillTicket = new BackfillTicket
         {
-            this.maxPlayers = maxPlayers;
-            BackfillTicketProperties backfillProperties = new BackfillTicketProperties(matchmakerPayloadProperties);
-            localBackfillTicket = new BackfillTicket
-            {
-                Id = matchmakerPayloadProperties.BackfillTicketId,
-                Properties = backfillProperties
-            };
+            Id = matchmakerPayloadProperties.BackfillTicketId,
+            Properties = backfillProperties
+        };
 
-            createBackfillOptions = new CreateBackfillTicketOptions
-            {
-                Connection = connection,
-                QueueName = queueName,
-                Properties = backfillProperties
-            };
+        createBackfillOptions = new CreateBackfillTicketOptions
+        {
+            Connection = connection,
+            QueueName = queueName,
+            Properties = backfillProperties
+        };
+    }
+    
+
+    public async Task BeginBackfilling()
+    {
+        if (IsBackfilling)
+        {
+            Debug.LogWarning("Already backfilling, no need to start another.");
+            return;
         }
 
-        public async Task BeginBackfilling()
+        Debug.Log($"Starting backfill Server: {MatchPlayerCount}/{maxPlayers}");
+
+        if (string.IsNullOrEmpty(localBackfillTicket.Id))
         {
-            if (IsBackfilling)
-            {
-                Debug.LogWarning("Already backfilling, no need to start another.");
-                return;
-            }
-
-            Debug.Log($"Starting backfill Server: {MatchPlayerCount}/{maxPlayers}");
-
-            if (string.IsNullOrEmpty(localBackfillTicket.Id))
-            {
-                localBackfillTicket.Id = await MatchmakerService.Instance.CreateBackfillTicketAsync(createBackfillOptions);
-            }
-
-            IsBackfilling = true;
-
-            BackfillLoop();
+            localBackfillTicket.Id = await MatchmakerService.Instance.CreateBackfillTicketAsync(createBackfillOptions);
         }
 
-        public void AddPlayerToMatch(UserData userData)
+        IsBackfilling = true;
+
+        BackfillLoop();
+    }
+
+    public int RemovePlayerFromMatch(string userId)
+    {
+        Player playerToRemove = GetPlayerById(userId);
+        if (playerToRemove == null)
         {
-            if (!IsBackfilling)
-            {
-                Debug.LogWarning("Can't add users to the backfill ticket before it's been created");
-                return;
-            }
-
-            if (GetPlayerById(userData.UserId) != null)
-            {
-                Debug.LogWarningFormat("User: {0} - {1} already in Match. Ignoring add.",
-                    userData.Username,
-                    userData.UserId);
-                
-                return;
-            }
-
-            Unity.Services.Matchmaker.Models.Player matchmakerPlayer = new Unity.Services.Matchmaker.Models.Player(userData.UserId, userData.GamePreferences);
-
-            MatchProperties.Players.Add(matchmakerPlayer);
-            MatchProperties.Teams[0].PlayerIds.Add(matchmakerPlayer.Id);
-            localDataDirty = true;
-        }
-
-        public int RemovePlayerFromMatch(string userId)
-        {
-            Unity.Services.Matchmaker.Models.Player playerToRemove = GetPlayerById(userId);
-            if (playerToRemove == null)
-            {
-                Debug.LogWarning($"No user by the ID: {userId} in local backfill Data.");
-                return MatchPlayerCount;
-            }
-
-            MatchProperties.Players.Remove(playerToRemove);
-            MatchProperties.Teams[0].PlayerIds.Remove(userId);
-            localDataDirty = true;
-
+            Debug.LogWarning($"No user by the ID: {userId} in local backfill Data.");
             return MatchPlayerCount;
         }
 
-        public bool NeedsPlayers()
+        MatchProperties.Players.Remove(playerToRemove);
+        GetTeamByUserId(userId).PlayerIds.Remove(userId);
+        localDataDirty = true;
+
+        return MatchPlayerCount;
+    }
+
+    public bool NeedsPlayers()
+    {
+        return MatchPlayerCount < maxPlayers;
+    }
+
+    public Team GetTeamByUserId(string userId)
+    {
+        return MatchProperties.Teams.FirstOrDefault(
+            t => t.PlayerIds.Contains(userId));
+    }
+
+    private Player GetPlayerById(string userId)
+    {
+        return MatchProperties.Players.FirstOrDefault(
+            p => p.Id.Equals(userId));
+    }
+
+    public async Task StopBackfill()
+    {
+        if (!IsBackfilling)
         {
-            return MatchPlayerCount < maxPlayers;
+            Debug.LogError("Can't stop backfilling before we start.");
+            return;
         }
 
-        private Unity.Services.Matchmaker.Models.Player GetPlayerById(string userId)
-        {
-            return MatchProperties.Players.FirstOrDefault(
-                p => p.Id.Equals(userId));
-        }
+        await MatchmakerService.Instance.DeleteBackfillTicketAsync(localBackfillTicket.Id);
+        IsBackfilling = false;
+        localBackfillTicket.Id = null;
+    }
 
-        public async Task StopBackfill()
+    private async void BackfillLoop()
+    {
+        while (IsBackfilling)
         {
-            if (!IsBackfilling)
+            if (localDataDirty)
             {
-                Debug.LogError("Can't stop backfilling before we start.");
-                return;
+                await MatchmakerService.Instance.UpdateBackfillTicketAsync(localBackfillTicket.Id, localBackfillTicket);
+                localDataDirty = false;
+            }
+            else
+            {
+                localBackfillTicket = await MatchmakerService.Instance.ApproveBackfillTicketAsync(localBackfillTicket.Id);
             }
 
-            await MatchmakerService.Instance.DeleteBackfillTicketAsync(localBackfillTicket.Id);
-            IsBackfilling = false;
-            localBackfillTicket.Id = null;
-        }
-
-        private async void BackfillLoop()
-        {
-            while (IsBackfilling)
+            if (!NeedsPlayers())
             {
-                if (localDataDirty)
-                {
-                    await MatchmakerService.Instance.UpdateBackfillTicketAsync(localBackfillTicket.Id, localBackfillTicket);
-                    localDataDirty = false;
-                }
-                else
-                {
-                    localBackfillTicket = await MatchmakerService.Instance.ApproveBackfillTicketAsync(localBackfillTicket.Id);
-                }
-
-                if (!NeedsPlayers())
-                {
-                    await StopBackfill();
-                    break;
-                }
-
-                await Task.Delay(TicketCheckMs);
+                await StopBackfill();
+                break;
             }
-        }
 
-        public void Dispose()
-        {
-            _ = StopBackfill();
+            await Task.Delay(TicketCheckMs);
         }
+    }
+
+    public void Dispose()
+    {
+        _ = StopBackfill();
     }
 }

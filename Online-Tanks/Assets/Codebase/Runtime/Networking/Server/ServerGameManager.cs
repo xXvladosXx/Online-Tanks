@@ -1,7 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using Codebase.Runtime.Networking.Client;
 using Codebase.Runtime.Networking.Server.Services;
+using Codebase.Runtime.Networking.Shared;
 using Unity.Netcode;
+using Unity.Services.Matchmaker.Models;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -9,41 +13,133 @@ namespace Codebase.Runtime.Networking.Server
 {
     public class ServerGameManager : IDisposable
     {
-        private readonly string _serverIP;
-        private readonly int _serverPort;
-        private readonly int _serverQPort;
-        private readonly MultiplayAllocationService _multiplayAllocationService;
-        private readonly NetworkServer _networkServer;
+        private string serverIP;
+        private int serverPort;
+        private int queryPort;
+        private MatchplayBackfiller backfiller;
+        private MultiplayAllocationService multiplayAllocationService;
 
-        private const string SCENE_NAME = "Gameplay";
+        private Dictionary<string, int> teamIdToTeamIndex = new Dictionary<string, int>();
+
+        public NetworkServer NetworkServer { get; private set; }
 
         public ServerGameManager(string serverIP, int serverPort,
-            int serverQPort, NetworkManager networkManager)
+            int queryPort, NetworkManager manager, NetworkObject playerPrefab)
         {
-            _serverIP = serverIP;
-            _serverPort = serverPort;
-            _serverQPort = serverQPort;
-            _networkServer = new NetworkServer(networkManager);
-            _multiplayAllocationService = new MultiplayAllocationService();
+            this.serverIP = serverIP;
+            this.serverPort = serverPort;
+            this.queryPort = queryPort;
+            NetworkServer = new NetworkServer(manager, playerPrefab);
+            multiplayAllocationService = new MultiplayAllocationService();
         }
-        
+
         public async Task StartGameServerAsync()
         {
-            await _multiplayAllocationService.BeginServerCheck();
+            await multiplayAllocationService.BeginServerCheck();
 
-            if (!_networkServer.OpenConnection(_serverIP, _serverPort))
+            try
             {
-                Debug.LogError("Failed to open connection sever");
+                MatchmakingResults matchmakerPayload = await GetMatchmakerPayload();
+
+                if (matchmakerPayload != null)
+                {
+                    await StartBackfill(matchmakerPayload);
+                    NetworkServer.OnUserConnected += UserJoined;
+                    NetworkServer.OnUserDisconnected += UserLeft;
+                }
+                else
+                {
+                    Debug.LogWarning("Matchmaker payload timed out");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning(e);
+            }
+
+            if (!NetworkServer.OpenConnection(serverIP, serverPort))
+            {
+                Debug.LogWarning("NetworkServer did not start as expected.");
                 return;
             }
-            
-            NetworkManager.Singleton.SceneManager.LoadScene(SCENE_NAME, LoadSceneMode.Single);
+        }
+
+        private async Task<MatchmakingResults> GetMatchmakerPayload()
+        {
+            Task<MatchmakingResults> matchmakerPayloadTask =
+                multiplayAllocationService.SubscribeAndAwaitMatchmakerAllocation();
+
+            if (await Task.WhenAny(matchmakerPayloadTask, Task.Delay(20000)) == matchmakerPayloadTask)
+            {
+                return matchmakerPayloadTask.Result;
+            }
+
+            return null;
+        }
+
+        private async Task StartBackfill(MatchmakingResults payload)
+        {
+            backfiller = new MatchplayBackfiller($"{serverIP}:{serverPort}",
+                payload.QueueName,
+                payload.MatchProperties,
+                20);
+
+            if (backfiller.NeedsPlayers())
+            {
+                await backfiller.BeginBackfilling();
+            }
+        }
+
+        private void UserJoined(UserData user)
+        {
+            Team team = backfiller.GetTeamByUserId(user.userAuthId);
+            if (!teamIdToTeamIndex.TryGetValue(team.TeamId, out int teamIndex))
+            {
+                teamIndex = teamIdToTeamIndex.Count;
+                teamIdToTeamIndex.Add(team.TeamId, teamIndex);
+            }
+
+            user.teamIndex = teamIndex;
+
+            multiplayAllocationService.AddPlayer();
+            if (!backfiller.NeedsPlayers() && backfiller.IsBackfilling)
+            {
+                _ = backfiller.StopBackfill();
+            }
+        }
+
+        private void UserLeft(UserData user)
+        {
+            int playerCount = backfiller.RemovePlayerFromMatch(user.userAuthId);
+            multiplayAllocationService.RemovePlayer();
+
+            if (playerCount <= 0)
+            {
+                CloseServer();
+                return;
+            }
+
+            if (backfiller.NeedsPlayers() && !backfiller.IsBackfilling)
+            {
+                _ = backfiller.BeginBackfilling();
+            }
+        }
+
+        private async void CloseServer()
+        {
+            await backfiller.StopBackfill();
+            Dispose();
+            Application.Quit();
         }
 
         public void Dispose()
         {
-            _multiplayAllocationService?.Dispose();
-            _networkServer?.Shutdown();
+            NetworkServer.OnUserConnected -= UserJoined;
+            NetworkServer.OnUserDisconnected -= UserLeft;
+
+            backfiller?.Dispose();
+            multiplayAllocationService?.Dispose();
+            NetworkServer?.Dispose();
         }
     }
 }

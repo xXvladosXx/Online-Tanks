@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Codebase.Runtime.Networking.Shared;
+using Codebase.Runtime.Utils;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.SceneManagement;

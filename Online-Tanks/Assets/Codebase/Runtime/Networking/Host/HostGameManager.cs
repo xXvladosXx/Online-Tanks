@@ -7,6 +7,7 @@ using Codebase.Runtime.Networking.Host;
 using Codebase.Runtime.Networking.Server;
 using Codebase.Runtime.Networking.Shared;
 using Codebase.Runtime.UI;
+using Codebase.Runtime.Utils;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using Unity.Networking.Transport.Relay;
@@ -29,7 +30,6 @@ public class HostGameManager : IDisposable
     public NetworkServer NetworkServer { get; private set; }
 
     private const int MaxConnections = 20;
-    private const string GameSceneName = "Gameplay";
 
     public HostGameManager(NetworkObject playerPrefab)
     {
@@ -107,7 +107,7 @@ public class HostGameManager : IDisposable
 
         NetworkServer.OnClientLeft += HandleClientLeft;
 
-        NetworkManager.Singleton.SceneManager.LoadScene(GameSceneName, LoadSceneMode.Single);
+        NetworkManager.Singleton.SceneManager.LoadScene(Constants.GAMEPLAY_SCENE_NAME, LoadSceneMode.Single);
     }
 
     private IEnumerator HearbeatLobby(float waitTimeSeconds)

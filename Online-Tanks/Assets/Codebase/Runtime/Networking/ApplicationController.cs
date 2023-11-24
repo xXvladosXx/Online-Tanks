@@ -6,6 +6,7 @@ using Codebase.Runtime.Networking.Client;
 using Codebase.Runtime.Networking.Host;
 using Codebase.Runtime.Networking.Server;
 using Codebase.Runtime.Networking.Shared;
+using Codebase.Runtime.Utils;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -21,9 +22,6 @@ namespace Codebase.Runtime.Networking
         [SerializeField] private ServerSingleton _serverPrefab;
         [SerializeField] private NetworkObject _playerPrefab;
 
-        private ApplicationData _applicationData;
-        private const string GameSceneName = "Gameplay";
-
         private async void Start()
         {
             DontDestroyOnLoad(gameObject);
@@ -35,7 +33,7 @@ namespace Codebase.Runtime.Networking
             if (isServer)
             {
                 Application.targetFrameRate = 60;
-                _applicationData = new ApplicationData();
+                var data = new ApplicationData();
                 var serverSingleton = Instantiate(_serverPrefab);
                 StartCoroutine(LoadGameSceneAsync(serverSingleton));
             }
@@ -56,7 +54,7 @@ namespace Codebase.Runtime.Networking
         
         private IEnumerator LoadGameSceneAsync(ServerSingleton serverSingleton)
         {
-            AsyncOperation asyncOperation = SceneManager.LoadSceneAsync(GameSceneName);
+            AsyncOperation asyncOperation = SceneManager.LoadSceneAsync(Constants.GAMEPLAY_SCENE_NAME);
 
             while (!asyncOperation.isDone)
             {

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Codebase.Runtime.Networking.Client;
 using Codebase.Runtime.Networking.Shared;
 using Codebase.Runtime.UI;
+using Codebase.Runtime.Utils;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using Unity.Networking.Transport.Relay;
